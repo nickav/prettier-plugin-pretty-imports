@@ -1,0 +1,21 @@
+{
+  "name": "@prettier/tidy-imports",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "license": "MIT",
+  "scripts": {
+    "example": "./node_modules/.bin/prettier --plugin . example.js"
+  },
+  "dependencies": {
+    "is-builtin-module": "^3.0.0",
+    "jscodeshift": "^0.6.4",
+    "prettier": "^1.19.1"
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "arrowParens": "always"
+  }
+}
