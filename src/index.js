@@ -117,7 +117,8 @@ const parsers = {
     parse(text, parsers, options) {
       const ast = babelParser.parse(text, parsers, options);
 
-      const declarations = j(ast).find(j.ImportDeclaration);
+      const root = j(ast);
+      const declarations = root.find(j.ImportDeclaration);
 
       if (!declarations.length) {
         return ast;
@@ -148,6 +149,10 @@ const parsers = {
         block.nodes = config.sortNodes(block.nodes);
       });
 
+      // Save file header comment
+      const firstNode = declarations.nodes()[0];
+      const firstNodeComments = (firstNode.leadingComments || []).slice();
+
       // Remove previous import comments
       const importComments = declarations
         .nodes()
@@ -172,9 +177,8 @@ const parsers = {
         .slice()
         .reverse()
         .forEach((block) => {
-          const printWidth = options.printWidth || 80;
           block.nodes[0].comments = config
-            .createComment(block, printWidth)
+            .createComment(block, options.printWidth)
             .map((line) => j.commentLine(line));
 
           block.nodes
@@ -184,6 +188,20 @@ const parsers = {
               body.unshift(node);
             });
         });
+
+      // Restore file header comment
+      if (firstNodeComments.length) {
+        if (firstNodeComments[0].type === 'CommentBlock') {
+          const fileHeaderComment = firstNodeComments[0].value;
+          const rawComment = `/*${fileHeaderComment}*/`;
+          j(
+            root
+              .find(j.ImportDeclaration)
+              .at(0)
+              .get()
+          ).insertBefore(rawComment + '\n');
+        }
+      }
 
       return ast;
     },
