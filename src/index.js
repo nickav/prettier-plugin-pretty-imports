@@ -1,4 +1,6 @@
-const { parsers } = require('prettier/parser-babylon');
+const {
+  parsers: { babel: babelParser },
+} = require('prettier/parser-babylon');
 const j = require('jscodeshift');
 
 const {
@@ -11,8 +13,6 @@ const {
 } = require('./matchers');
 
 // Based on https://github.com/bfncs/codemod-imports-sort/
-
-const babelParser = parsers['babel'];
 
 const createComment = (block, width = 80) => [
   ' '.padEnd(width - 1, '-'),
@@ -34,19 +34,20 @@ const sortBlocks = (blocks) => blocks.slice().sort((a, b) => a.order - b.order);
 const sortNodes = (nodes) =>
   nodes.slice().sort((a, b) => a.source.value.localeCompare(b.source.value));
 
-const api = {
+// TODO(nick): allow users to provide their own config
+const config = {
   createComment,
   getImportBlock,
   sortBlocks,
   sortNodes,
 };
 
-exports.parsers = {
+const parsers = {
   babel: {
     ...babelParser,
 
-    parse(...args) {
-      const ast = babelParser.parse(...args);
+    parse(text, parsers, options) {
+      const ast = babelParser.parse(text, parsers, options);
 
       const declarations = j(ast).find(j.ImportDeclaration);
 
@@ -59,7 +60,7 @@ exports.parsers = {
       // Get sections
       const blocks = Object.values(
         declarations.nodes().reduce((memo, node) => {
-          const block = api.getImportBlock(node);
+          const block = config.getImportBlock(node);
 
           if (!memo[block.name])
             memo[block.name] = Object.assign(block, { nodes: [] });
@@ -70,11 +71,11 @@ exports.parsers = {
       );
 
       // Sort blocks
-      const sortedBlocks = api.sortBlocks(blocks);
+      const sortedBlocks = config.sortBlocks(blocks);
 
       // Sort nodes
       sortedBlocks.forEach((block) => {
-        block.nodes = api.sortNodes(block.nodes);
+        block.nodes = config.sortNodes(block.nodes);
       });
 
       // Remove previous import comments
@@ -101,8 +102,8 @@ exports.parsers = {
         .slice()
         .reverse()
         .forEach((block) => {
-          const printWidth = args[2].printWidth || 80;
-          block.nodes[0].comments = api
+          const printWidth = options.printWidth || 80;
+          block.nodes[0].comments = config
             .createComment(block, printWidth)
             .map((line) => j.commentLine(line));
 
@@ -118,33 +119,21 @@ exports.parsers = {
       return ast;
     },
 
+    /*
     preprocess(text, options) {
       if (babelParser.preprocess) {
         text = babelParser.preprocess(text, options);
       }
 
-      console.log(options);
-
       return text;
     },
+    */
   },
+};
 
-  /*
-  'json-stringify': {
-    ...parser,
-    preprocess(text, options) {
-      //console.log('preprocessing!');
+const printers = {};
 
-      if (parser.preprocess) {
-        text = parser.preprocess(text, options);
-      }
-
-      if (options.filepath && /(^|\\|\/)package\.json$/.test(options.filepath)) {
-        return text.replace('version', 'hello');
-      }
-
-      return text;
-    },
-  },
-  */
+module.exports = {
+  parsers,
+  //printers
 };
