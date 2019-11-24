@@ -1,3 +1,4 @@
+const path = require('path');
 const {
   parsers: { babel: babelParser },
 } = require('prettier/parser-babylon');
@@ -7,9 +8,7 @@ const {
   isExternalModule,
   isScopedExternalModule,
   isInternalModule,
-  isLocalModuleFromParentDirectory,
-  isLocalModuleCurrentDirectoryIndex,
-  isLocalModuleFromSiblingDirectory,
+  isLocalModule,
 } = require('./matchers');
 
 // Based on https://github.com/bfncs/codemod-imports-sort/
@@ -21,25 +20,87 @@ const createComment = (block, width = 80) => [
   ` ${block.name} `.padEnd(width - 1, '-'),
 ];
 
-const getImportBlock = (node) => {
+const getImportBlockName = (node, options) => {
   const { value } = node.source;
 
   if (isExternalModule(value)) {
-    return { name: 'Node Modules', order: 0 };
+    return 'Node Modules';
+  }
+
+  if (
+    value.startsWith('./') &&
+    (value.endsWith('.css') || value.endsWith('.scss'))
+  ) {
+    return 'Style';
   }
 
   if (value.startsWith('@/')) {
     const name = value.replace('@/', '').split('/')[0];
-    return { name: ucfirst(name), order: 1 };
+    return ucfirst(name);
   }
 
-  return { name: 'Other', order: 2 };
+  if (isLocalModule(value)) {
+    const parts = options.filepath.split(path.sep);
+    const pathStart = (parts.length > 1
+      ? parts.slice(0, parts.length - 1)
+      : []
+    ).join(path.sep);
+    const fileName = parts[parts.length - 1];
+    const importPath = path.resolve(pathStart, value);
+
+    if (importPath.includes('/src/')) {
+      return ucfirst(importPath.split('/src/')[1].split('/')[0]);
+    }
+
+    return 'Modules';
+  }
+
+  return 'Modules';
+};
+
+const getImportBlock = (node, options) => {
+  const name = getImportBlockName(node, options);
+
+  const blockOrder = [
+    'Node Modules',
+    'Modules',
+    'Style',
+    'Components',
+    'Actions',
+    'Store',
+    'Helpers',
+  ];
+
+  const index = blockOrder.indexOf(name);
+
+  return { name, order: index >= 0 ? index : blockOrder.length + 1 };
 };
 
 const sortBlocks = (blocks) => blocks.slice().sort((a, b) => a.order - b.order);
 
+const getImportModuleOrder = (path) => {
+  const importOrder = [
+    isExternalModule,
+    isScopedExternalModule,
+    isInternalModule,
+    isLocalModule,
+  ];
+
+  const i = importOrder.findIndex((matcher) => matcher(path));
+  return i >= 0 ? i : importOrder.length + 1;
+};
+
 const sortNodes = (nodes) =>
-  nodes.slice().sort((a, b) => a.source.value.localeCompare(b.source.value));
+  nodes.slice().sort((a, b) => {
+    const aIndex = getImportModuleOrder(a.source.value);
+    const bIndex = getImportModuleOrder(b.source.value);
+
+    if (aIndex === bIndex) {
+      return a.source.value.localeCompare(b.source.value);
+    }
+
+    return bIndex - aIndex;
+  });
 
 // TODO(nick): allow users to provide their own config
 const config = {
@@ -67,7 +128,9 @@ const parsers = {
       // Get sections
       const blocks = Object.values(
         declarations.nodes().reduce((memo, node) => {
-          const block = config.getImportBlock(node);
+          const block = config.getImportBlock(node, {
+            filepath: options.filepath,
+          });
 
           if (!memo[block.name])
             memo[block.name] = Object.assign(block, { nodes: [] });

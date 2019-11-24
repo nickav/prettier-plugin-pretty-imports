@@ -4,7 +4,7 @@
   "main": "src/index.js",
   "license": "MIT",
   "scripts": {
-    "example": "./node_modules/.bin/prettier --plugin . example.js"
+    "example": "./node_modules/.bin/prettier --plugin . test/src/components/Component.jsx"
   },
   "dependencies": {
     "is-builtin-module": "^3.0.0",
