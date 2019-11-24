@@ -1,7 +1,6 @@
 const { parsers } = require('prettier/parser-babylon');
 const j = require('jscodeshift');
 
-//const compareImports = require('./compareImports').default;
 const {
   isExternalModule,
   isScopedExternalModule,
@@ -51,7 +50,7 @@ exports.parsers = {
 
       const declarations = j(ast).find(j.ImportDeclaration);
 
-      if (declarations.length <= 1) {
+      if (!declarations.length) {
         return ast;
       }
 
@@ -72,6 +71,7 @@ exports.parsers = {
 
       // Sort blocks
       const sortedBlocks = api.sortBlocks(blocks);
+
       // Sort nodes
       sortedBlocks.forEach((block) => {
         block.nodes = api.sortNodes(block.nodes);
@@ -91,9 +91,10 @@ exports.parsers = {
           )
       );
 
-      // remove old declarations
+      // Remove old declarations
       declarations.remove();
 
+      // Insert new comment blocks
       const body = ast.program.body;
 
       sortedBlocks
@@ -113,8 +114,6 @@ exports.parsers = {
             });
           //body.unshift(block.nodes);
         });
-
-      //sortedDeclarations.forEach((dec) => body.unshift(dec));
 
       return ast;
     },
