@@ -1,5 +1,5 @@
 {
-  "name": "@prettier/tidy-imports",
+  "name": "@prettier/pretty-imports",
   "version": "1.0.0",
   "main": "src/index.js",
   "license": "MIT",
