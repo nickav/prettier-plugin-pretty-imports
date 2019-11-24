@@ -14,6 +14,8 @@ const {
 
 // Based on https://github.com/bfncs/codemod-imports-sort/
 
+const ucfirst = (str) => str[0].toUpperCase() + str.slice(1);
+
 const createComment = (block, width = 80) => [
   ' '.padEnd(width - 1, '-'),
   ` ${block.name} `.padEnd(width - 1, '-'),
@@ -26,7 +28,12 @@ const getImportBlock = (node) => {
     return { name: 'Node Modules', order: 0 };
   }
 
-  return { name: 'Other', order: 1 };
+  if (value.startsWith('@/')) {
+    const name = value.replace('@/', '').split('/')[0];
+    return { name: ucfirst(name), order: 1 };
+  }
+
+  return { name: 'Other', order: 2 };
 };
 
 const sortBlocks = (blocks) => blocks.slice().sort((a, b) => a.order - b.order);
@@ -113,27 +120,35 @@ const parsers = {
             .forEach((node, i) => {
               body.unshift(node);
             });
-          //body.unshift(block.nodes);
         });
 
       return ast;
     },
 
-    /*
     preprocess(text, options) {
       if (babelParser.preprocess) {
         text = babelParser.preprocess(text, options);
       }
 
-      return text;
+      const isImportLine = (line) =>
+        line.startsWith('import') ||
+        (!line.startsWith('//') &&
+          (line.includes('} from "') || line.includes("} from '")));
+
+      const lines = text.split('\n');
+
+      // Remove newlines after imports
+      // TODO(nick): is there a better way to do this?
+      return lines
+        .filter(
+          (line, i, lines) =>
+            i < 1 || (isImportLine(lines[i - 1]) ? line.length : true)
+        )
+        .join('\n');
     },
-    */
   },
 };
 
-const printers = {};
-
 module.exports = {
   parsers,
-  //printers
 };
