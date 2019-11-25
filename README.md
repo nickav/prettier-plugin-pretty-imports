@@ -1,5 +1,7 @@
 # prettier-plugin-pretty-imports
 
+[![npm version](https://badge.fury.io/js/prettier-plugin-pretty-imports.svg)](https://badge.fury.io/js/prettier-plugin-pretty-imports)
+
 #### Sorted, sectioned imports
 
 Groups and sorts your JavaScript imports when running prettier.
