@@ -15,6 +15,12 @@ const {
 
 const ucfirst = (str) => str[0].toUpperCase() + str.slice(1);
 
+const isRequire = (node) =>
+  node && node.callee && node.callee.name === 'require';
+
+const isRequireDeclaration = (node) =>
+  node.declarations && isRequire(node.declarations[0].init);
+
 const createComment = (block, width = 80) => [
   ' '.padEnd(width - 1, '-'),
   ` ${block.name} `.padEnd(width - 1, '-'),
@@ -108,6 +114,7 @@ const config = {
   getImportBlock,
   sortBlocks,
   sortNodes,
+  ignoreRequire: false,
 };
 
 const parsers = {
@@ -119,16 +126,29 @@ const parsers = {
 
       const root = j(ast);
       const declarations = root.find(j.ImportDeclaration);
+      const requireNodes = config.ignoreRequire
+        ? []
+        : root
+            .find(j.VariableDeclaration)
+            .nodes()
+            .filter(isRequireDeclaration);
 
-      if (!declarations.length) {
+      if (!declarations.length && !requireNodes.length) {
         return ast;
       }
+
+      const nodes = declarations.nodes().concat(
+        requireNodes.map((e) => ({
+          ...e,
+          source: { value: e.declarations[0].init.arguments[0].value },
+        }))
+      );
 
       // TODO(nick): join imports from the same paths
 
       // Get sections
       const blocks = Object.values(
-        declarations.nodes().reduce((memo, node) => {
+        nodes.reduce((memo, node) => {
           const block = config.getImportBlock(node, {
             filepath: options.filepath,
           });
@@ -150,12 +170,11 @@ const parsers = {
       });
 
       // Save file header comment
-      const firstNode = declarations.nodes()[0];
+      const firstNode = nodes[0];
       const firstNodeComments = (firstNode.leadingComments || []).slice();
 
       // Remove previous import comments
-      const importComments = declarations
-        .nodes()
+      const importComments = nodes
         .map((node) => node.leadingComments)
         .filter((e) => e)
         .flat(1);
@@ -168,6 +187,13 @@ const parsers = {
       );
 
       // Remove old declarations
+      if (!config.ignoreRequire) {
+        root.find(j.VariableDeclaration).forEach((path) => {
+          if (isRequireDeclaration(path.node)) {
+            path.prune();
+          }
+        });
+      }
       declarations.remove();
 
       // Insert new comment blocks
