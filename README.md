@@ -1,2 +1,2 @@
-@prettier/pretty-imports
+prettier-plugin-pretty-imports
 ---
