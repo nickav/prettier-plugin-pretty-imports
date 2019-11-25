@@ -1,7 +1,7 @@
 {
   "name": "prettier-plugin-pretty-imports",
   "description": "Prettier plugin to format comments",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "src/index.js",
   "scripts": {
     "test": "./node_modules/.bin/prettier --plugin . test/src/components/Component.jsx"
