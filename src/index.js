@@ -11,8 +11,6 @@ const {
   isLocalModule,
 } = require('./matchers');
 
-// Based on https://github.com/bfncs/codemod-imports-sort/
-
 const ucfirst = (str) => str[0].toUpperCase() + str.slice(1);
 
 const isRequire = (node) =>
