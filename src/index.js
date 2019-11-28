@@ -1,9 +1,8 @@
+const j = require('jscodeshift');
 const path = require('path');
 const {
   parsers: { babel: babelParser },
 } = require('prettier/parser-babylon');
-const j = require('jscodeshift');
-
 const {
   isExternalModule,
   isScopedExternalModule,
@@ -106,8 +105,7 @@ const sortNodes = (nodes) =>
     return bIndex - aIndex;
   });
 
-// TODO(nick): allow users to provide their own config
-const config = {
+const defaultConfig = {
   createComment,
   getImportBlock,
   sortBlocks,
@@ -121,6 +119,24 @@ const parsers = {
 
     parse(text, parsers, options) {
       const ast = babelParser.parse(text, parsers, options);
+
+      if (options.prettyImports === false) {
+        return ast;
+      }
+
+      // allow users to provide their own config
+      // TODO(nick): make config resolver more robust
+      let userConfig = {};
+      if (options.prettyImportsConfig) {
+        try {
+          userConfig = require(path.join(
+            process.cwd(),
+            options.prettyImportsConfig
+          ));
+        } catch (err) {}
+      }
+
+      const config = { ...defaultConfig, ...userConfig };
 
       const root = j(ast);
       const declarations = root.find(j.ImportDeclaration);
@@ -239,7 +255,6 @@ const parsers = {
         line.startsWith('import') ||
         (!line.startsWith('//') &&
           (line.includes('} from "') || line.includes("} from '")));
-
       const lines = text.split('\n');
 
       // Remove newlines after imports
@@ -256,4 +271,18 @@ const parsers = {
 
 module.exports = {
   parsers,
+  options: {
+    prettyImports: {
+      type: 'boolean',
+      category: 'Global',
+      default: true,
+      description: 'Disable prettyImports plugin',
+    },
+    prettyImportsConfig: {
+      type: 'string',
+      category: 'Global',
+      default: true,
+      description: 'Specify path to pretty imports config file',
+    },
+  },
 };

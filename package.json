@@ -19,12 +19,5 @@
     "is-builtin-module": "^3.0.0",
     "jscodeshift": "^0.6.4",
     "prettier": "^1.19.1"
-  },
-  "prettier": {
-    "semi": true,
-    "singleQuote": true,
-    "tabWidth": 2,
-    "trailingComma": "es5",
-    "arrowParens": "always"
   }
 }
